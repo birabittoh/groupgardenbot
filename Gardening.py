@@ -256,4 +256,5 @@ def get_plant_info(plant: Plant):
 
 Points: {plant.points}
 Bonus: x{plant.generation_bonus - 1}
+Owner: {plant.owner}
 '''

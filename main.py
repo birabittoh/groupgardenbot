@@ -1,6 +1,7 @@
 import os, logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-from telegram import Update
+from telegram.error import BadRequest
+from telegram import Update, User, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Updater, CallbackContext, CallbackQueryHandler, CommandHandler, MessageHandler, PicklePersistence
 from dotenv import load_dotenv
 load_dotenv()
@@ -9,21 +10,18 @@ from Gardening import Plant, get_plant_info
 def reply(update: Update, context: CallbackContext, text: str = "", markup: str = ""):
     return context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup, parse_mode='Markdown')
 
-def get_plant(update: Update, context: CallbackContext):
+def get_plant(context: CallbackContext, user_id: int):
         try:
-            plant = context.bot_data[update.effective_user.id]["plant"]
+            plant = context.bot_data[user_id]["plant"]
         except KeyError:
-            return None
-        
-        if plant is None: # probably useless but heh
-            print("############### This wasn't so useless after all! ###############")
             return None
         
         plant.update()
         return plant
 
-def start(update: Update, context: CallbackContext):
-    plant = get_plant(update, context)
+def start_handler(update: Update, context: CallbackContext):
+    
+    plant = get_plant(context, update.effective_user.id)
     new = False
     
     if plant is None:
@@ -39,50 +37,50 @@ def start(update: Update, context: CallbackContext):
     
     return reply(update, context, "La tua pianta non è ancora pronta per andarsene!")
 
-def water(update: Update, context: CallbackContext):
-    plant = get_plant(update, context)
+def water(context: CallbackContext, user_id: int):
+    plant = get_plant(context, user_id)
     
     if plant is None:
-        return reply(update, context, "Non hai nessuna pianta da innaffiare! Usa /start per piantarne una.")
+        return "Non hai nessuna pianta da innaffiare! Usa /start per piantarne una."
 
     if plant.dead:
-        return reply(update, context, "La tua pianta è morta... Usa /harvest per piantarne un'altra.")
+        return "La pianta è morta..."
     
     plant.water()
-    return reply(update, context, "Pianta innaffiata.")
+    return "Pianta innaffiata."
 
-def show(update: Update, context: CallbackContext):
-    plant = get_plant(update, context)
+def show(context: CallbackContext, user_id: int):
+    plant = get_plant(context, user_id)
     
     if plant is None:
-        return reply(update, context, "Non hai nessuna pianta da mostrare! Usa /start per piantarne una.")
+        return "Non hai nessuna pianta da mostrare! Usa /start per piantarne una."
 
-    return reply(update, context, get_plant_info(plant))
+    return get_plant_info(plant)
 
+def water_handler(update: Update, context: CallbackContext):
+    answer = water(context, update.effective_user.id)
+    return reply(update, context, answer)
 
-'''
+def show_handler(update: Update, context: CallbackContext):
+    user_id = update.effective_user.id
+    answer = show(context, user_id)
+    
+    markup = InlineKeyboardMarkup([[InlineKeyboardButton(text="Innaffia 🚰", callback_data=f"water {user_id}")]])
+    reply(update, context, answer, markup)
+
 def keyboard_handler(update: Update, context: CallbackContext):
     query = update.callback_query
     data = query.data
     
-    if data.startswith("reroll"):
-        amount = int(data.split(" ")[1])
-        
-        if amount <= 1:
-            return spin(update, context)
-        return autospin(context, update.effective_chat.id, amount)
+    if data.startswith("water"):
+        user_id = int(data.split(" ")[1])
+        answer = water(context, user_id)
+        if user_id != update.effective_user.id:
+            reply(update, context, f"{update.effective_user.full_name} ha innaffiato la pianta di qualcuno!")
+        return query.answer(answer)
     
-    match data:
-        case "none":
-            return query.answer("This button doesn't do anything.", context))
-        case other:
-            logging.error(f"unknown callback: {data}")
-    
-    return query.answer()
+    return query.answer("Questo tasto non fa nulla.")
 
-def unknown(update: Update, context: CallbackContext):
-    logging.info(f"User {update.message.from_user.full_name} sent {update.message.text_markdown_v2} and I don't know what that means.")
-'''
 def main():
     
     updater = Updater(token=os.getenv("token"),
@@ -97,21 +95,11 @@ def main():
     
     
     # commands
-    dispatcher.add_handler(CommandHandler('start', start))
-    dispatcher.add_handler(CommandHandler('water', water))
-    dispatcher.add_handler(CommandHandler('show', show))
+    dispatcher.add_handler(CommandHandler('start', start_handler))
+    dispatcher.add_handler(CommandHandler('water', water_handler))
+    dispatcher.add_handler(CommandHandler('show', show_handler))
     
-    '''
-    # slot
-    dispatcher.add_handler(CommandHandler('spin', spin))
-    dispatcher.add_handler(CommandHandler('bet', bet))
-    dispatcher.add_handler(CommandHandler('cash', cash))
-    '''
-    
-    '''
     dispatcher.add_handler(CallbackQueryHandler(callback=keyboard_handler))
-    dispatcher.add_handler(MessageHandler(Filters.command, unknown))
-    '''
     
     updater.start_polling()
     print(os.getenv("bot_name"))
