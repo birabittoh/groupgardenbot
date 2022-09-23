@@ -146,7 +146,7 @@ def find_stage(plant: Plant):
     
     plant.points += max(0, res1 - res2) # max() not necessary but just in case
     
-    print("generation bonus: ", plant.generation_bonus, ". increase: ", res1 - res2, "max: ", water_duration)
+    #print("generation bonus: ", plant.generation_bonus, ". increase: ", res1 - res2, "max: ", water_duration)
     plant.last_update = now
     
     stages = tuple(ti / plant.generation_bonus for ti in plant.life_stages) # bonus is applied to stage thresholds
@@ -159,7 +159,7 @@ def find_stage(plant: Plant):
             closest = n
             count += 1
             
-    print("plant is in stage", count, "because it passed", closest, "seconds of life")
+    #print("plant is in stage", count, "because it passed", closest, "seconds of life")
     return count
     
 def get_plant_water(plant: Plant):

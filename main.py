@@ -24,12 +24,20 @@ def get_plant(update: Update, context: CallbackContext):
 
 def start(update: Update, context: CallbackContext):
     plant = get_plant(update, context)
+    new = False
     
-    if plant is not None:
-        return reply(update, context, "Hai già una pianta. Usa /water se vuoi innaffiarla.")
+    if plant is None:
+        context.bot_data[update.effective_user.id] = { "plant" : Plant(update.effective_user.id) }
+        new = True
+
+    if plant.dead or plant.stage == 5:
+        plant.start_over()
+        new = True
     
-    context.bot_data[update.effective_user.id] = { "plant" : Plant(update.effective_user.id) }
-    return reply(update, context, "Hai piantato un seme! Adesso usa /water per innaffiarlo.")
+    if new:
+        return reply(update, context, "Hai piantato un nuovo seme! Adesso usa /water per innaffiarlo.")
+    
+    return reply(update, context, "La tua pianta non è ancora pronta per andarsene!")
 
 def water(update: Update, context: CallbackContext):
     plant = get_plant(update, context)
@@ -51,21 +59,7 @@ def show(update: Update, context: CallbackContext):
 
     return reply(update, context, get_plant_info(plant))
 
-def harvest(update: Update, context: CallbackContext):
-    plant = get_plant(update, context)
-    
-    if plant is None:
-        return reply(update, context, "Non hai nessuna pianta! Usa /start per piantarne una.")
 
-    if plant.dead:
-        plant.start_over()
-        return reply(update, context, "Hai piantato un nuovo seme. Usa /water per innaffiarlo, magari stavolta un po' più spesso.")
-    
-    if plant.stage != 5:
-        return reply(update, context, "La tua pianta non è ancora pronta per andarsene!")
-    
-    plant.start_over()
-    return reply(update, context, "Complimenti, hai piantato un nuovo seme! Usa /water per innaffiarlo.")
 '''
 def keyboard_handler(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -106,7 +100,6 @@ def main():
     dispatcher.add_handler(CommandHandler('start', start))
     dispatcher.add_handler(CommandHandler('water', water))
     dispatcher.add_handler(CommandHandler('show', show))
-    dispatcher.add_handler(CommandHandler('harvest', harvest))
     
     '''
     # slot
