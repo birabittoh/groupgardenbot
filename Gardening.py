@@ -196,11 +196,10 @@ def get_plant_info(plant: Plant):
     return f'''
 {get_plant_description(plant)}
 ```{get_plant_art(plant)}```
-{plant.name}, the {plant.parse_plant()}
+[{plant.name}, the {plant.parse_plant()}](tg://user?id={plant.owner})
 
 {get_plant_water(plant)}
 
 Points: {plant.points}
 Bonus: x{plant.generation_bonus - 1}
-Owner: {plant.owner}
 '''
