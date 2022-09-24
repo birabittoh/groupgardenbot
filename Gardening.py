@@ -27,8 +27,7 @@ class Plant(object):
         self.last_time = int(time.time())
         self.last_update = int(time.time())
         # must water plant first day
-        #self.last_water = int(time.time())-(24*3600)-1
-        self.last_water = int(time.time())
+        self.last_water = int(time.time()) - water_duration - 1
         self.watered_24h = True
         self.visitors = []
 
