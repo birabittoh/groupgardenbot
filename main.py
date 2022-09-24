@@ -1,11 +1,10 @@
 import os, logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-from telegram.error import BadRequest
-from telegram import Update, User, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Updater, CallbackContext, CallbackQueryHandler, CommandHandler, MessageHandler, PicklePersistence
 from dotenv import load_dotenv
-load_dotenv()
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import Updater, CallbackContext, CallbackQueryHandler, CommandHandler, PicklePersistence
 from Gardening import Plant, get_plant_info
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+load_dotenv()
 
 def reply(update: Update, context: CallbackContext, text: str = "", markup: str = ""):
     return context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup, parse_mode='Markdown')
@@ -113,6 +112,7 @@ def keyboard_handler(update: Update, context: CallbackContext):
     
     if data.startswith("show"):
         user_id = int(data.split(" ")[1])
+        query.answer()
     
     if user_id is not None:
         text, markup = show(context, user_id)
@@ -120,7 +120,7 @@ def keyboard_handler(update: Update, context: CallbackContext):
         
     return query.answer("Questo tasto non fa nulla.")
 
-def main():
+if __name__ == "__main__":
     updater = Updater(token=os.getenv("token"),
                       persistence=PicklePersistence(filename='bot-data.pkl',
                                                     store_user_data=False,
@@ -139,6 +139,3 @@ def main():
     updater.start_polling()
     print(updater.bot.name, "is up and running!")
     updater.idle()
-
-if __name__ == "__main__":
-    main()

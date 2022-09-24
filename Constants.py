@@ -82,31 +82,6 @@ stage_descriptions = {
 def get_stage_description(stage: int, number: int, species: str, color: str) -> str:
     return stage_descriptions[stage][number].format(color=color, species=species)
 
-plant_art_list = [
-    'poppy',
-    'cactus',
-    'aloe',
-    'flytrap',
-    'jadeplant',
-    'fern',
-    'daffodil',
-    'sunflower',
-    'baobab',
-    'lithops',
-    'hemp',
-    'pansy',
-    'iris',
-    'agave',
-    'ficus',
-    'moss',
-    'sage',
-    'snapdragon',
-    'columbine',
-    'brugmansia',
-    'palm',
-    'pachypodium',
-    ]
-
 stage_list = [
     'seed',
     'seedling',

@@ -1,4 +1,4 @@
-import random, time, math, datetime, os
+import random, os, time, datetime
 from Constants import *
 
 water_duration = 3600 * 24
@@ -20,7 +20,6 @@ class Plant(object):
         self.color = random.randint(0, len(color_list) - 1)
         self.name = plant_names[random.randint(0, len(plant_names) - 1)]
         self.rarity = self.rarity_check()
-        self.ticks = 0
         self.generation = generation
         self.generation_bonus = 1 + (0.2 * (generation - 1))
         self.dead = False
@@ -117,7 +116,7 @@ class Plant(object):
 def get_plant_water(plant: Plant):
     water_delta = int(time.time()) - plant.last_water
     water_left_pct = max(0, 1 - (water_delta/water_duration))
-    water_left = int(math.ceil(water_left_pct * indicator_squares))
+    water_left = int(round(water_left_pct * indicator_squares))
     return f"{water_left * '🟦'}{'⬛' * (indicator_squares - water_left)} {str(round(water_left_pct * 100))}% "
 
 def get_plant_description(plant: Plant):
@@ -140,7 +139,7 @@ def get_plant_description(plant: Plant):
             last_growth_at = plant.life_stages[this_stage - 1]
         else:
             last_growth_at = 0
-        ticks_since_last = plant.ticks - last_growth_at
+        ticks_since_last = plant.points - last_growth_at
         ticks_between_stage = plant.life_stages[this_stage] - last_growth_at
         if ticks_since_last >= ticks_between_stage * 0.8:
             output_text += "You notice your plant looks different.\n"
@@ -150,17 +149,14 @@ def get_plant_description(plant: Plant):
     # if seedling
     if this_stage == 1:
         species_options = [species_list[plant.species],
-                species_list[(plant.species+3) % len(species_list)],
-                species_list[(plant.species-3) % len(species_list)]]
+                species_list[(plant.species + 3) % len(species_list)],
+                species_list[(plant.species - 3) % len(species_list)]]
         random.shuffle(species_options)
-        plant_hint = "It could be a(n) " + species_options[0] + ", " + species_options[1] + ", or " + species_options[2]
-        output_text += plant_hint + ".\n"
-
+        output_text += f"It could be a(n) {species_options[0]}, {species_options[1]} or {species_options[2]}.\n"
     # if young plant
     if this_stage == 2:
         if plant.rarity >= 2:
-            rarity_hint = "You feel like your plant is special."
-            output_text += rarity_hint + ".\n"
+            output_text += "You feel like your plant is special.\n"
 
     # if mature plant
     if this_stage == 3:
@@ -168,7 +164,7 @@ def get_plant_description(plant: Plant):
                 color_list[(plant.color+3) % len(color_list)],
                 color_list[(plant.color-3) % len(color_list)]]
         random.shuffle(color_options)
-        return "You can see the first hints of " + color_options[0] + ", " + color_options[1] + ", or " + color_options[2]
+        output_text += f"You can see the first hints of {color_options[0]}, {color_options[1]}, or {color_options[2]}.\n"
 
     return output_text
 
@@ -177,9 +173,9 @@ def get_art_filename(plant: Plant):
     if datetime.date.today().month == 10 and datetime.date.today().day == 31: return 'jackolantern.txt'
     if plant.stage == 0: return 'seed.txt'
     if plant.stage == 1: return 'seedling.txt'
-    if plant.stage == 2: return plant_art_list[plant.species]+'1.txt'
-    if plant.stage == 3 or plant.stage == 5: return plant_art_list[plant.species]+'2.txt'
-    if plant.stage == 4: return plant_art_list[plant.species]+'3.txt'
+    if plant.stage == 2: return species_list[plant.species]+'1.txt'
+    if plant.stage == 3 or plant.stage == 5: return species_list[plant.species]+'2.txt'
+    if plant.stage == 4: return species_list[plant.species]+'3.txt'
     return "template.txt"
 
 def get_plant_art(plant: Plant):
@@ -200,6 +196,6 @@ def get_plant_info(plant: Plant):
 
 {get_plant_water(plant)}
 
-Points: {plant.points}
 Bonus: x{plant.generation_bonus - 1}
+Points: {plant.points}
 '''
