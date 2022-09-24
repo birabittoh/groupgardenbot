@@ -4,6 +4,7 @@ from Constants import *
 water_duration = 3600 * 24
 stage_factors = (1, 3, 10, 20, 30)
 indicator_squares = 6
+mutation_rarity = 20000 # Increase this # to make mutation rarer (chance 1 out of x each second)
 
 class Plant(object):
     # This is your plant!
@@ -96,12 +97,10 @@ class Plant(object):
             self.watered_24h = False
             return False
 
-    def mutate_check(self):
+    def mutate_check(self, increase):
         # Create plant mutation
-        # Increase this # to make mutation rarer (chance 1 out of x each second)
-        CONST_MUTATION_RARITY = 20000
-        mutation_seed = random.randint(1,CONST_MUTATION_RARITY)
-        if mutation_seed == CONST_MUTATION_RARITY:
+        mutation_seed = random.randint(increase, mutation_rarity)
+        if mutation_seed == mutation_rarity:
             # mutation gained!
             mutation = random.randint(0,len(self.mutation_list)-1)
             if self.mutation == 0:
@@ -143,9 +142,13 @@ def find_stage(plant: Plant):
     
     res1 = min(now - plant.last_water, water_duration)
     res2 = min(plant.last_update - plant.last_water, water_duration)
+    increase = max(0, res1 - res2) # max() not necessary but just in case
     
-    plant.points += max(0, res1 - res2) # max() not necessary but just in case
-
+    plant.points += increase
+    
+    if increase != 0:
+        plant.mutate_check(increase)
+    
     plant.last_update = now
     
     stages = tuple(ti / plant.generation_bonus for ti in plant.life_stages) # bonus is applied to stage thresholds

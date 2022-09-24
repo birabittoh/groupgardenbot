@@ -37,7 +37,7 @@ def start_handler(update: Update, context: CallbackContext):
     
     if plant is None:
         plant = Plant(user_id)
-        context.bot_data[update.effective_user.id] = { "plant" : Plant(user_id) }
+        context.bot_data[update.effective_user.id] = { "plant" : plant }
         new = True
 
     if plant.dead or plant.stage == 5:
