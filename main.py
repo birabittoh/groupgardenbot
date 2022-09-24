@@ -1,8 +1,8 @@
-import os, logging
+import os, logging, time
 from dotenv import load_dotenv
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update, User, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Updater, CallbackContext, CallbackQueryHandler, CommandHandler, PicklePersistence
-from Gardening import Plant, get_plant_info
+from Gardening import Plant
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 load_dotenv()
 
@@ -11,6 +11,22 @@ def reply(update: Update, context: CallbackContext, text: str = "", markup: str 
 
 def edit(update: Update, context: CallbackContext, text: str = "", markup: str = ""):
     context.bot.editMessageText(chat_id=update.effective_chat.id, message_id=update.effective_message.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
+
+def get_plant_info(plant: Plant):
+    return f'''
+```{plant.get_art()}
+owner : {plant.owner_name}
+name  : {plant.name}
+stage : {plant.parse_plant()}
+age   : {plant.age_days} days
+score : {plant.points}
+bonus : x{plant.generation_bonus - 1}
+water : {plant.get_water_ascii()}```
+
+{plant.get_description()}
+
+{f'Last watered by {plant.last_water_name}.' if plant.last_water_user != plant.owner else ""}
+'''
 
 def get_plant(context: CallbackContext, user_id: int):
         try:
@@ -35,12 +51,12 @@ def start_handler(update: Update, context: CallbackContext):
     new = False
     
     if plant is None:
-        plant = Plant(user_id)
-        context.bot_data[update.effective_user.id] = { "plant" : plant }
+        plant = Plant(update.effective_user)
+        context.bot_data[user_id] = { "plant" : plant }
         new = True
 
     if plant.dead or plant.stage == 5:
-        plant.start_over()
+        plant.start_over(update.effective_user)
         new = True
     
     if new:
@@ -49,7 +65,7 @@ def start_handler(update: Update, context: CallbackContext):
     
     return reply(update, context, "La tua pianta non è ancora pronta per andarsene!")
 
-def water(context: CallbackContext, user_id: int):
+def water(context: CallbackContext, user_id: int, who: User):
     plant = get_plant(context, user_id)
     
     if plant is None:
@@ -57,8 +73,8 @@ def water(context: CallbackContext, user_id: int):
 
     if plant.dead:
         return "La pianta è morta..."
-    
-    plant.water()
+
+    plant.water(who)
     return "Pianta innaffiata."
 
 def show(context: CallbackContext, user_id: int):
@@ -87,7 +103,7 @@ def rename(context: CallbackContext, user_id: int):
     return f"Fatto! Adesso la tua pianta si chiama {new_name}!"
 
 def water_handler(update: Update, context: CallbackContext):
-    answer = water(context, update.effective_user.id)
+    answer = water(context, update.effective_user.id, update.effective_user)
     return reply(update, context, answer)
 
 def show_handler(update: Update, context: CallbackContext):
@@ -107,7 +123,7 @@ def keyboard_handler(update: Update, context: CallbackContext):
     
     if data.startswith("water"):
         user_id = int(data.split(" ")[1])
-        answer = water(context, user_id)
+        answer = water(context, user_id, update.effective_user)
         query.answer(answer)
     
     if data.startswith("show"):
