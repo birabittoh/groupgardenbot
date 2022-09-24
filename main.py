@@ -10,6 +10,9 @@ from Gardening import Plant, get_plant_info
 def reply(update: Update, context: CallbackContext, text: str = "", markup: str = ""):
     return context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup, parse_mode='Markdown')
 
+def edit(update: Update, context: CallbackContext, text: str = "", markup: str = ""):
+    context.bot.editMessageText(chat_id=update.effective_chat.id, message_id=update.effective_message.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
+
 def get_plant(context: CallbackContext, user_id: int):
         try:
             plant = context.bot_data[user_id]["plant"]
@@ -23,7 +26,7 @@ def get_plant_markup(user_id: int):
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(text="Innaffia 🚰", callback_data=f"water {user_id}"),
-            InlineKeyboardButton(text="Mostra 🌱", callback_data=f"show {user_id}"),
+            InlineKeyboardButton(text="Aggiorna 🌱", callback_data=f"show {user_id}"),
         ]
     ])
 
@@ -64,9 +67,10 @@ def show(context: CallbackContext, user_id: int):
     
     if plant is None:
         return "Non hai nessuna pianta da mostrare! Usa /start per piantarne una.", ""
-
+    
+    text = get_plant_info(plant)
     markup = get_plant_markup(user_id)
-    return get_plant_info(plant), markup
+    return text, markup
 
 def rename(context: CallbackContext, user_id: int):
     plant = get_plant(context, user_id)
@@ -100,18 +104,19 @@ def rename_handler(update: Update, context: CallbackContext):
 def keyboard_handler(update: Update, context: CallbackContext):
     query = update.callback_query
     data = query.data
+    user_id = None
     
     if data.startswith("water"):
         user_id = int(data.split(" ")[1])
         answer = water(context, user_id)
-        if user_id != update.effective_user.id:
-            reply(update, context, f"{update.effective_user.full_name} ha innaffiato la pianta di qualcuno!")
-        return query.answer(answer)
+        query.answer(answer)
     
     if data.startswith("show"):
         user_id = int(data.split(" ")[1])
-        answer, markup = show(context, user_id)
-        reply(update, context, answer, markup)
+    
+    if user_id is not None:
+        text, markup = show(context, user_id)
+        return edit(update, context, text, markup)
         
     return query.answer("Questo tasto non fa nulla.")
 
@@ -125,7 +130,6 @@ def main():
                                                     ))
     dispatcher = updater.dispatcher
     
-    # commands
     dispatcher.add_handler(CommandHandler('start', start_handler))
     dispatcher.add_handler(CommandHandler('water', water_handler))
     dispatcher.add_handler(CommandHandler('show', show_handler))

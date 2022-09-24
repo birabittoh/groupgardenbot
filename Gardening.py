@@ -1,7 +1,7 @@
 import random, time, math, datetime, os
 from Constants import *
 
-water_duration = 3600 # * 24
+water_duration = 3600 * 24
 stage_factors = (1, 3, 10, 20, 30)
 indicator_squares = 6
 
@@ -161,9 +161,9 @@ def find_stage(plant: Plant):
     
 def get_plant_water(plant: Plant):
     water_delta = time.time() - plant.last_water
-    water_left_pct = max(0, 1 - (water_delta/water_duration)) # 24h
+    water_left_pct = max(0, 1 - (water_delta/water_duration))
     water_left = int(math.ceil(water_left_pct * indicator_squares))
-    return f"{water_left * '🟦'}{'⬛' * (indicator_squares - water_left)} {str(int(water_left_pct * 100))}% "
+    return f"{water_left * '🟦'}{'⬛' * (indicator_squares - water_left)} {str(math.ceil(water_left_pct * 100))}% "
 
 def get_plant_description(plant: Plant):
     output_text = ""
