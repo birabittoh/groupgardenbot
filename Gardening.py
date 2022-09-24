@@ -3,6 +3,7 @@ from Constants import *
 
 water_duration = 3600 # * 24
 stage_factors = (1, 3, 10, 20, 30)
+indicator_squares = 6
 
 class Plant(object):
     # This is your plant!
@@ -12,8 +13,9 @@ class Plant(object):
         self.life_stages = tuple(st * water_duration for st in stage_factors)
         self.stage = 0
         self.mutation = 0
-        self.species = random.randint(0,len(species_list)-1)
-        self.color = random.randint(0,len(color_list)-1)
+        self.species = random.randint(0, len(species_list) - 1)
+        self.color = random.randint(0, len(color_list) - 1)
+        self.name = plant_names[random.randint(0, len(plant_names) - 1)]
         self.rarity = self.rarity_check()
         self.ticks = 0
         self.age_formatted = "0"
@@ -31,7 +33,6 @@ class Plant(object):
         self.visitors = []
 
     def update(self):
-        
         # find out stage:
         self.water_check()
         if self.dead_check(): # updates self.time_delta_watered
@@ -145,8 +146,7 @@ def find_stage(plant: Plant):
     res2 = min(plant.last_update - plant.last_water, water_duration)
     
     plant.points += max(0, res1 - res2) # max() not necessary but just in case
-    
-    #print("generation bonus: ", plant.generation_bonus, ". increase: ", res1 - res2, "max: ", water_duration)
+
     plant.last_update = now
     
     stages = tuple(ti / plant.generation_bonus for ti in plant.life_stages) # bonus is applied to stage thresholds
@@ -158,15 +158,13 @@ def find_stage(plant: Plant):
         if (n <= delta and (closest is None or (delta - n) < (delta - closest))):
             closest = n
             count += 1
-            
-    #print("plant is in stage", count, "because it passed", closest, "seconds of life")
     return count
     
 def get_plant_water(plant: Plant):
     water_delta = time.time() - plant.last_water
     water_left_pct = max(0, 1 - (water_delta/water_duration)) # 24h
-    water_left = int(math.ceil(water_left_pct * 10))
-    return f"{water_left * '🟦'}{'⬛' * (10 - water_left)} {str(int(water_left_pct * 100))}% "
+    water_left = int(math.ceil(water_left_pct * indicator_squares))
+    return f"{water_left * '🟦'}{'⬛' * (indicator_squares - water_left)} {str(int(water_left_pct * 100))}% "
 
 def get_plant_description(plant: Plant):
     output_text = ""
@@ -250,7 +248,7 @@ def get_plant_info(plant: Plant):
     return f'''
 {get_plant_description(plant)}
 ```{get_plant_art(plant)}```
-{plant.parse_plant()}
+{plant.name}, the {plant.parse_plant()}
 
 {get_plant_water(plant)}
 

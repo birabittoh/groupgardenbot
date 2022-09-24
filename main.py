@@ -19,13 +19,22 @@ def get_plant(context: CallbackContext, user_id: int):
         plant.update()
         return plant
 
+def get_plant_markup(user_id: int):
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(text="Innaffia 🚰", callback_data=f"water {user_id}"),
+            InlineKeyboardButton(text="Mostra 🌱", callback_data=f"show {user_id}"),
+        ]
+    ])
+
 def start_handler(update: Update, context: CallbackContext):
-    
-    plant = get_plant(context, update.effective_user.id)
+    user_id = update.effective_user.id
+    plant = get_plant(context, user_id)
     new = False
     
     if plant is None:
-        context.bot_data[update.effective_user.id] = { "plant" : Plant(update.effective_user.id) }
+        plant = Plant(user_id)
+        context.bot_data[update.effective_user.id] = { "plant" : Plant(user_id) }
         new = True
 
     if plant.dead or plant.stage == 5:
@@ -33,6 +42,7 @@ def start_handler(update: Update, context: CallbackContext):
         new = True
     
     if new:
+        show_handler(update, context)
         return reply(update, context, "Hai piantato un nuovo seme! Adesso usa /water per innaffiarlo.")
     
     return reply(update, context, "La tua pianta non è ancora pronta per andarsene!")
@@ -41,7 +51,7 @@ def water(context: CallbackContext, user_id: int):
     plant = get_plant(context, user_id)
     
     if plant is None:
-        return "Non hai nessuna pianta da innaffiare! Usa /start per piantarne una."
+        return "Non hai niente da innaffiare! Usa /start per piantare un seme."
 
     if plant.dead:
         return "La pianta è morta..."
@@ -53,9 +63,25 @@ def show(context: CallbackContext, user_id: int):
     plant = get_plant(context, user_id)
     
     if plant is None:
-        return "Non hai nessuna pianta da mostrare! Usa /start per piantarne una."
+        return "Non hai nessuna pianta da mostrare! Usa /start per piantarne una.", ""
 
-    return get_plant_info(plant)
+    markup = get_plant_markup(user_id)
+    return get_plant_info(plant), markup
+
+def rename(context: CallbackContext, user_id: int):
+    plant = get_plant(context, user_id)
+    
+    if plant is None:
+        return "Non hai ancora piantato niente! Usa /start per piantare un seme."
+    try:
+        new_name = " ".join(context.args).strip()
+        if new_name == "":
+            raise IndexError
+    except IndexError:
+        return "Utilizzo: /rename <nuovo nome>"
+    
+    plant.name = new_name
+    return f"Fatto! Adesso la tua pianta si chiama {new_name}!"
 
 def water_handler(update: Update, context: CallbackContext):
     answer = water(context, update.effective_user.id)
@@ -63,10 +89,13 @@ def water_handler(update: Update, context: CallbackContext):
 
 def show_handler(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
-    answer = show(context, user_id)
-    
-    markup = InlineKeyboardMarkup([[InlineKeyboardButton(text="Innaffia 🚰", callback_data=f"water {user_id}")]])
+    answer, markup = show(context, user_id)
     reply(update, context, answer, markup)
+    
+def rename_handler(update: Update, context: CallbackContext):
+    user_id = update.effective_user.id
+    answer = rename(context, user_id)
+    reply(update, context, answer)
 
 def keyboard_handler(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -79,10 +108,14 @@ def keyboard_handler(update: Update, context: CallbackContext):
             reply(update, context, f"{update.effective_user.full_name} ha innaffiato la pianta di qualcuno!")
         return query.answer(answer)
     
+    if data.startswith("show"):
+        user_id = int(data.split(" ")[1])
+        answer, markup = show(context, user_id)
+        reply(update, context, answer, markup)
+        
     return query.answer("Questo tasto non fa nulla.")
 
 def main():
-    
     updater = Updater(token=os.getenv("token"),
                       persistence=PicklePersistence(filename='bot-data.pkl',
                                                     store_user_data=False,
@@ -90,19 +123,17 @@ def main():
                                                     store_callback_data=False,
                                                     store_chat_data=False
                                                     ))
-    
     dispatcher = updater.dispatcher
-    
     
     # commands
     dispatcher.add_handler(CommandHandler('start', start_handler))
     dispatcher.add_handler(CommandHandler('water', water_handler))
     dispatcher.add_handler(CommandHandler('show', show_handler))
-    
+    dispatcher.add_handler(CommandHandler('rename', rename_handler))
     dispatcher.add_handler(CallbackQueryHandler(callback=keyboard_handler))
     
     updater.start_polling()
-    print(os.getenv("bot_name"))
+    print(updater.bot.name, "is up and running!")
     updater.idle()
 
 if __name__ == "__main__":
