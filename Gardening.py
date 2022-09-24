@@ -2,9 +2,11 @@ import random, time, math, datetime, os
 from Constants import *
 
 water_duration = 3600 * 24
+death_duration = 6 * water_duration
 stage_factors = (1, 3, 10, 20, 30)
 indicator_squares = 6
 mutation_rarity = 20000 # Increase this # to make mutation rarer (chance 1 out of x each second)
+max_plant_rarity = 256.0
 
 class Plant(object):
     # This is your plant!
@@ -19,26 +21,39 @@ class Plant(object):
         self.name = plant_names[random.randint(0, len(plant_names) - 1)]
         self.rarity = self.rarity_check()
         self.ticks = 0
-        self.age_formatted = "0"
         self.generation = generation
         self.generation_bonus = 1 + (0.2 * (generation - 1))
         self.dead = False
         self.owner = owner
         self.start_time = int(time.time())
-        self.last_time = int(time.time())
-        self.last_update = int(time.time())
-        # must water plant first day
-        self.last_water = int(time.time()) - water_duration - 1
-        self.watered_24h = True
-        self.visitors = []
+        self.last_update = self.start_time
+        self.last_water = self.start_time - water_duration
 
     def update(self):
-        # find out stage:
-        self.water_check()
-        if self.dead_check(): # updates self.time_delta_watered
+        now = int(time.time())
+        water_delta = now - self.last_water
+        if water_delta > death_duration:
+            self.dead = True
             return
+    
+        increase = min(water_delta, water_duration) - min(self.last_update - self.last_water, water_duration)
 
-        self.stage = find_stage(self)
+        if increase != 0:
+            self.points += increase
+            self.mutate_check(increase)
+
+        stages = tuple(th / self.generation_bonus for th in self.life_stages) # bonus is applied to stage thresholds
+        count = 0
+        closest = None
+        delta = self.points
+
+        for n in stages:
+            if (n <= delta and (closest is None or (delta - n) < (delta - closest))):
+                closest = n
+                count += 1
+
+        self.stage = count
+        self.last_update = now
         
     def parse_plant(self):
         # Converts plant data to human-readable format
@@ -56,18 +71,17 @@ class Plant(object):
 
     def rarity_check(self):
         # Generate plant rarity
-        CONST_RARITY_MAX = 256.0
-        rare_seed = random.randint(1,CONST_RARITY_MAX)
-        common_range =    round((2.0/3)*CONST_RARITY_MAX)
-        uncommon_range =  round((2.0/3)*(CONST_RARITY_MAX-common_range))
-        rare_range =      round((2.0/3)*(CONST_RARITY_MAX-common_range-uncommon_range))
-        legendary_range = round((2.0/3)*(CONST_RARITY_MAX-common_range-uncommon_range-rare_range))
+        rare_seed = random.randint(1,max_plant_rarity)
+        common_range =    round((2.0 / 3) * max_plant_rarity)
+        uncommon_range =  round((2.0 / 3) * (max_plant_rarity - common_range))
+        rare_range =      round((2.0 / 3) * (max_plant_rarity - common_range - uncommon_range))
+        legendary_range = round((2.0 / 3) * (max_plant_rarity - common_range - uncommon_range - rare_range))
 
         common_max = common_range
         uncommon_max = common_max + uncommon_range
         rare_max = uncommon_max + rare_range
         legendary_max = rare_max + legendary_range
-        godly_max = CONST_RARITY_MAX
+        godly_max = max_plant_rarity
 
         if 0 <= rare_seed <= common_max:
             return 0
@@ -80,93 +94,31 @@ class Plant(object):
         elif legendary_max < rare_seed <= godly_max:
             return 4
 
-    def dead_check(self):
-        # if it has been >5 days since watering, sorry plant is dead :(
-        self.time_delta_watered = int(time.time()) - self.last_water
-        if self.time_delta_watered > (5 * water_duration):
-            self.dead = True
-        return self.dead
-
-    def water_check(self):
-        self.time_delta_watered = int(time.time()) - self.last_water
-        if self.time_delta_watered <= (water_duration):
-            if not self.watered_24h:
-                self.watered_24h = True
-            return True
-        else:
-            self.watered_24h = False
-            return False
-
     def mutate_check(self, increase):
         # Create plant mutation
         mutation_seed = random.randint(increase, mutation_rarity)
         if mutation_seed == mutation_rarity:
             # mutation gained!
-            mutation = random.randint(0,len(self.mutation_list)-1)
+            mutation = random.randint(0, len(self.mutation_list) - 1)
             if self.mutation == 0:
                 self.mutation = mutation
                 return True
         else:
             return False
 
-    def growth(self):
-        # Increase plant growth stage
-        if self.stage < (len(stage_list)-1):
-            self.stage += 1
-
     def water(self):
-        # Increase plant growth stage
         if not self.dead:
             self.last_water = int(time.time())
-            self.watered_24h = True
 
     def start_over(self):
-        # After plant reaches final stage, given option to restart
-        # increment generation only if previous stage is final stage and plant
-        # is alive
-        if not self.dead:
-            next_generation = self.generation + 1
-        else:
-            # Should this reset to 1? Seems unfair.. for now generations will
-            # persist through death.
-            next_generation = self.generation
-        self.kill_plant()
-        
+        next_generation = self.generation if self.dead else self.generation + 1
         self.__init__(self.owner, next_generation)
 
-    def kill_plant(self):
-        self.dead = True
-
-def find_stage(plant: Plant):
-    now = int(time.time())
-    
-    res1 = min(now - plant.last_water, water_duration)
-    res2 = min(plant.last_update - plant.last_water, water_duration)
-    increase = max(0, res1 - res2) # max() not necessary but just in case
-    
-    plant.points += increase
-    
-    if increase != 0:
-        plant.mutate_check(increase)
-    
-    plant.last_update = now
-    
-    stages = tuple(ti / plant.generation_bonus for ti in plant.life_stages) # bonus is applied to stage thresholds
-    count = 0
-    closest = None
-    delta = plant.points
-    
-    for n in stages:
-        if (n <= delta and (closest is None or (delta - n) < (delta - closest))):
-            closest = n
-            count += 1
-    return count
-    
 def get_plant_water(plant: Plant):
-    water_delta = time.time() - plant.last_water
+    water_delta = int(time.time()) - plant.last_water
     water_left_pct = max(0, 1 - (water_delta/water_duration))
     water_left = int(math.ceil(water_left_pct * indicator_squares))
-    return f"{water_left * '🟦'}{'⬛' * (indicator_squares - water_left)} {str(math.ceil(water_left_pct * 100))}% "
+    return f"{water_left * '🟦'}{'⬛' * (indicator_squares - water_left)} {str(round(water_left_pct * 100))}% "
 
 def get_plant_description(plant: Plant):
     output_text = ""
@@ -220,23 +172,18 @@ def get_plant_description(plant: Plant):
 
     return output_text
 
-def get_plant_art(plant: Plant):
-    
-    if plant.dead == True:
-        filename = 'rip.txt'
-    elif datetime.date.today().month == 10 and datetime.date.today().day == 31:
-        filename = 'jackolantern.txt'
-    elif plant.stage == 0:
-        filename = 'seed.txt'
-    elif plant.stage == 1:
-        filename = 'seedling.txt'
-    elif plant.stage == 2:
-        filename = plant_art_list[plant.species]+'1.txt'
-    elif plant.stage == 3 or plant.stage == 5:
-        filename = plant_art_list[plant.species]+'2.txt'
-    elif plant.stage == 4:
-        filename = plant_art_list[plant.species]+'3.txt'
+def get_art_filename(plant: Plant):
+    if plant.dead == True: return 'rip.txt'
+    if datetime.date.today().month == 10 and datetime.date.today().day == 31: return 'jackolantern.txt'
+    if plant.stage == 0: return 'seed.txt'
+    if plant.stage == 1: return 'seedling.txt'
+    if plant.stage == 2: return plant_art_list[plant.species]+'1.txt'
+    if plant.stage == 3 or plant.stage == 5: return plant_art_list[plant.species]+'2.txt'
+    if plant.stage == 4: return plant_art_list[plant.species]+'3.txt'
+    return "template.txt"
 
+def get_plant_art(plant: Plant):
+    filename = get_art_filename(plant)
     # Prints ASCII art from file at given coordinates
     this_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "art")
     this_filename = os.path.join(this_dir, filename)
@@ -246,7 +193,6 @@ def get_plant_art(plant: Plant):
     return this_string
 
 def get_plant_info(plant: Plant):
-    
     return f'''
 {get_plant_description(plant)}
 ```{get_plant_art(plant)}```
