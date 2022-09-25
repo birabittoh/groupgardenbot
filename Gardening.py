@@ -1,11 +1,11 @@
 import random, os, time, datetime
 from Constants import *
 
-water_duration = 3600 * 24
+water_duration = 3_600 * 24
 death_duration = 5 * water_duration
 stage_factors = (1, 3, 10, 20, 30)
 indicator_squares = 10
-mutation_rarity = 20000 # Increase this # to make mutation rarer (chance 1 out of x each second)
+mutation_rarity = 1_000_000 # Increase this # to make mutation rarer (chance 1 out of x each second)
 max_plant_rarity = 256.0
 
 class Plant(object):
