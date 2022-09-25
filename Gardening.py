@@ -1,7 +1,7 @@
 import random, os, time, datetime
 from Constants import *
 
-water_duration = 3_600 * 24
+water_duration = 3_600 * 24 # 86_400s (24h)
 death_duration = 5 * water_duration
 stage_factors = (1, 3, 10, 20, 30)
 indicator_squares = 10
@@ -124,12 +124,6 @@ class Plant(object):
         water_delta = int(time.time()) - self.last_water
         water_left_pct = max(0, 1 - (water_delta/water_duration))
         water_left = int(round(water_left_pct * indicator_squares))
-        return f"{water_left * '🟦'}{'⬛' * (indicator_squares - water_left)} {str(round(water_left_pct * 100))}%"
-
-    def get_water_ascii(self):
-        water_delta = int(time.time()) - self.last_water
-        water_left_pct = max(0, 1 - (water_delta/water_duration))
-        water_left = int(round(water_left_pct * indicator_squares))
         return f"|{water_left * '█'}{' ' * (indicator_squares - water_left)}| {str(round(water_left_pct * 100))}%"
 
     def get_filename(self):
@@ -144,7 +138,7 @@ class Plant(object):
 
     def get_art(self):
         filename = self.get_filename()
-        # Prints ASCII art from file at given coordinates
+        # Prints ASCII art from file
         this_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "art")
         this_filename = os.path.join(this_dir, filename)
         this_file = open(this_filename,"r")
@@ -159,7 +153,7 @@ class Plant(object):
         this_stage = self.stage
 
         if self.dead:
-                this_stage = 99
+            this_stage = 99
         try:
             description_num = random.randint(0,len(stage_descriptions[this_stage]) - 1)
         except KeyError as e:
@@ -176,7 +170,7 @@ class Plant(object):
             ticks_between_stage = self.life_stages[this_stage] - last_growth_at
             if ticks_since_last >= ticks_between_stage * 0.8:
                 output_text += "You notice your plant looks different.\n"
-
+        
         output_text += get_stage_description(this_stage, description_num, this_species, this_color) + "\n"
 
         # if seedling
@@ -190,7 +184,6 @@ class Plant(object):
         if this_stage == 2:
             if self.rarity >= 2:
                 output_text += "You feel like your plant is special.\n"
-
         # if mature plant
         if this_stage == 3:
             color_options = [color_list[self.color],

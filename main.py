@@ -21,10 +21,9 @@ stage : {plant.parse_plant()}
 age   : {plant.age_days} days
 score : {plant.points}
 bonus : x{plant.generation_bonus - 1}
-water : {plant.get_water_ascii()}```
+water : {plant.get_water()}```
 
 {plant.get_description()}
-
 {f'Last watered by {plant.last_water_name}.' if plant.last_water_user != plant.owner else ""}
 '''
 
@@ -61,7 +60,7 @@ def start_handler(update: Update, context: CallbackContext):
     
     if new:
         show_handler(update, context)
-        return reply(update, context, "Hai piantato un nuovo seme! Adesso usa /water per innaffiarlo.")
+        return reply(update, context, "Hai piantato un nuovo seme! Adesso usa /water o un tasto sopra per innaffiarlo.")
     
     return reply(update, context, "La tua pianta non è ancora pronta per andarsene!")
 
@@ -97,7 +96,7 @@ def rename(context: CallbackContext, user_id: int):
         if new_name == "":
             raise IndexError
     except IndexError:
-        return "Utilizzo: /rename <nuovo nome>"
+        return "Utilizzo: /rename nuovo nome"
     
     plant.name = new_name
     return f"Fatto! Adesso la tua pianta si chiama {new_name}!"
