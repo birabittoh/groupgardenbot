@@ -100,10 +100,10 @@ class Plant(object):
 
     def mutate_check(self, increase):
         # Create plant mutation
-        mutation_seed = random.randint(increase, mutation_rarity)
+        mutation_seed = mutation_rarity if increase >= mutation_rarity else random.randint(increase, mutation_rarity)
         if mutation_seed == mutation_rarity:
             # mutation gained!
-            mutation = random.randint(0, len(self.mutation_list) - 1)
+            mutation = random.randint(0, len(mutation_list) - 1)
             if self.mutation == 0:
                 self.mutation = mutation
                 return True
