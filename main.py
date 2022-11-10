@@ -20,7 +20,7 @@ name  : {plant.name}
 stage : {plant.parse_plant()}
 age   : {plant.age_days} days
 score : {plant.points}
-bonus : x{plant.generation_bonus - 1}
+bonus : x{plant.generation_bonus - 1:.2f}
 water : {plant.get_water()}```
 
 {plant.get_description()}
