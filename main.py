@@ -1,16 +1,16 @@
 import os, logging, time
 from dotenv import load_dotenv
 from telegram import Update, User, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Updater, CallbackContext, CallbackQueryHandler, CommandHandler, PicklePersistence
+from telegram.ext import PersistenceInput, ApplicationBuilder, CallbackContext, CallbackQueryHandler, CommandHandler, PicklePersistence
 from Gardening import Plant
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 load_dotenv()
 
-def reply(update: Update, context: CallbackContext, text: str = "", markup: str = ""):
-    return context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup, parse_mode='Markdown')
+async def reply(update: Update, context: CallbackContext, text: str = "", markup: str = ""):
+    return await context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup, parse_mode='Markdown')
 
-def edit(update: Update, context: CallbackContext, text: str = "", markup: str = ""):
-    context.bot.editMessageText(chat_id=update.effective_chat.id, message_id=update.effective_message.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
+async def edit(update: Update, context: CallbackContext, text: str = "", markup: str = ""):
+    return await context.bot.editMessageText(chat_id=update.effective_chat.id, message_id=update.effective_message.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
 
 def get_plant_info(plant: Plant):
     return f'''
@@ -44,7 +44,7 @@ def get_plant_markup(user_id: int):
         ]
     ])
 
-def start_handler(update: Update, context: CallbackContext):
+async def start_handler(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     plant = get_plant(context, user_id)
     new = False
@@ -60,9 +60,9 @@ def start_handler(update: Update, context: CallbackContext):
     
     if new:
         show_handler(update, context)
-        return reply(update, context, "Hai piantato un nuovo seme! Adesso usa /water o un tasto sopra per innaffiarlo.")
+        return await reply(update, context, "Hai piantato un nuovo seme! Adesso usa /water o un tasto sopra per innaffiarlo.")
     
-    return reply(update, context, "La tua pianta non è ancora pronta per andarsene!")
+    return await reply(update, context, "La tua pianta non è ancora pronta per andarsene!")
 
 def water(context: CallbackContext, user_id: int, who: User):
     plant = get_plant(context, user_id)
@@ -101,21 +101,21 @@ def rename(context: CallbackContext, user_id: int):
     plant.name = new_name
     return f"Fatto! Adesso la tua pianta si chiama {new_name}!"
 
-def water_handler(update: Update, context: CallbackContext):
+async def water_handler(update: Update, context: CallbackContext):
     answer = water(context, update.effective_user.id, update.effective_user)
-    return reply(update, context, answer)
+    return await reply(update, context, answer)
 
-def show_handler(update: Update, context: CallbackContext):
+async def show_handler(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     answer, markup = show(context, user_id)
-    reply(update, context, answer, markup)
+    return await reply(update, context, answer, markup)
     
-def rename_handler(update: Update, context: CallbackContext):
+async def rename_handler(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     answer = rename(context, user_id)
-    reply(update, context, answer)
+    return await reply(update, context, answer)
 
-def keyboard_handler(update: Update, context: CallbackContext):
+async def keyboard_handler(update: Update, context: CallbackContext):
     query = update.callback_query
     data = query.data
     user_id = None
@@ -123,34 +123,33 @@ def keyboard_handler(update: Update, context: CallbackContext):
     if data.startswith("water"):
         user_id = int(data.split(" ")[1])
         answer = water(context, user_id, update.effective_user)
-        query.answer(answer)
+        await query.answer(answer)
     
     if data.startswith("show"):
         user_id = int(data.split(" ")[1])
-        query.answer()
+        await query.answer()
     
     if user_id is not None:
         text, markup = show(context, user_id)
-        return edit(update, context, text, markup)
+        return await edit(update, context, text, markup)
         
-    return query.answer("Questo tasto non fa nulla.")
+    return await query.answer("Questo tasto non fa nulla.")
 
 if __name__ == "__main__":
-    updater = Updater(token=os.getenv("token"),
-                      persistence=PicklePersistence(filename='bot-data.pkl',
-                                                    store_user_data=False,
-                                                    store_bot_data=True,
-                                                    store_callback_data=False,
-                                                    store_chat_data=False
-                                                    ))
-    dispatcher = updater.dispatcher
+    pers = PersistenceInput(bot_data=True, user_data=False, callback_data=False, chat_data=False)
     
-    dispatcher.add_handler(CommandHandler('start', start_handler))
-    dispatcher.add_handler(CommandHandler('water', water_handler))
-    dispatcher.add_handler(CommandHandler('show', show_handler))
-    dispatcher.add_handler(CommandHandler('rename', rename_handler))
-    dispatcher.add_handler(CallbackQueryHandler(callback=keyboard_handler))
+    application = ApplicationBuilder()
+    application.token(os.getenv("token"))
+    application.persistence(PicklePersistence(filepath='bot-data.pkl', store_data=pers))
+    application = application.build()
     
-    updater.start_polling()
-    print(updater.bot.name, "is up and running!")
-    updater.idle()
+    application.add_handler(CallbackQueryHandler(callback=keyboard_handler))
+    
+    
+    application.add_handler(CommandHandler('start', start_handler))
+    application.add_handler(CommandHandler('water', water_handler))
+    application.add_handler(CommandHandler('show', show_handler))
+    application.add_handler(CommandHandler('rename', rename_handler))
+    
+    #print(application.bot.name, "is up and running!")
+    application.run_polling()
