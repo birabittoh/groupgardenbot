@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "groupgardenbot"
+version = "0.1.0"
+description = "An extension of the game \"botany\", originally designed for unix-based systems, to the Telegram Bot API."
+authors = ["Marco Andronaco <andronacomarco@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+python-dotenv = "^1.0.0"
+python-telegram-bot = "^20.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
