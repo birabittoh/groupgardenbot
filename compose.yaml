@@ -1,7 +1,7 @@
 services:
   groupgardenbot:
     container_name: groupgardenbot
-    image: birabittoh/groupgardenbot
+    image: ghcr.io/birabittoh/groupgardenbot:master
     build:
       context: .
     env_file: .env
