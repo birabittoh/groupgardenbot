@@ -9,6 +9,8 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 load_dotenv()
 
+data_dir = 'data'
+
 async def reply(update: Update, context: CallbackContext, text: str = "", markup: str = ""):
     return await context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=markup, parse_mode='Markdown')
 
@@ -194,7 +196,9 @@ if __name__ == "__main__":
     
     application = ApplicationBuilder()
     application.token(os.getenv("token"))
-    application.persistence(PicklePersistence(filepath='bot-data.pkl', store_data=pers))
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    application.persistence(PicklePersistence(filepath=os.path.join(data_dir, 'bot-data.pkl'), store_data=pers))
     application = application.build()
     
     application.add_handler(CallbackQueryHandler(callback=keyboard_handler))
